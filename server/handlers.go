@@ -332,7 +332,7 @@ func (s *Server) handleConnectorLogin(w http.ResponseWriter, r *http.Request) {
 				s.logger.Errorf("Server template error: %v", err)
 			}
 		case connector.SAMLConnector:
-			action, value, err := conn.POSTData(scopes, authReqID)
+			action, value, err := conn.POSTData(r.Host, scopes, authReqID)
 			if err != nil {
 				s.logger.Errorf("Creating SAML data: %v", err)
 				s.renderError(r, w, http.StatusInternalServerError, "Connector Login Error")
@@ -452,7 +452,7 @@ func (s *Server) handleConnectorCallback(w http.ResponseWriter, r *http.Request)
 			s.renderError(r, w, http.StatusBadRequest, "Invalid request")
 			return
 		}
-		identity, err = conn.HandlePOST(parseScopes(authReq.Scopes), r.PostFormValue("SAMLResponse"), authReq.ID)
+		identity, err = conn.HandlePOST(r.Host, parseScopes(authReq.Scopes), r.PostFormValue("SAMLResponse"), authReq.ID)
 	default:
 		s.renderError(r, w, http.StatusInternalServerError, "Requested resource does not exist.")
 		return

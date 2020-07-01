@@ -80,7 +80,7 @@ type SAMLConnector interface {
 	//
 	// POSTData should encode the provided request ID in the returned serialized
 	// SAML request.
-	POSTData(s Scopes, requestID string) (ssoURL, samlRequest string, err error)
+	POSTData(h string, s Scopes, requestID string) (ssoURL, samlRequest string, err error)
 
 	// HandlePOST decodes, verifies, and maps attributes from the SAML response.
 	// It passes the expected value of the "InResponseTo" response field, which
@@ -88,7 +88,7 @@ type SAMLConnector interface {
 	//
 	// See: https://www.oasis-open.org/committees/download.php/35711/sstc-saml-core-errata-2.0-wd-06-diff.pdf
 	// "3.2.2 Complex Type StatusResponseType"
-	HandlePOST(s Scopes, samlResponse, inResponseTo string) (identity Identity, err error)
+	HandlePOST(h string, s Scopes, samlResponse, inResponseTo string) (identity Identity, err error)
 }
 
 // RefreshConnector is a connector that can update the client claims.
