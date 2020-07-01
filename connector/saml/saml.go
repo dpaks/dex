@@ -314,7 +314,7 @@ func (p *provider) HandlePOST(host string, s connector.Scopes, samlResponse, inR
 	}
 
 	p.entityIssuer = issuerUrl
-	p.redirectURI = fmt.Sprintf("%s%s", issuerUrl, p.redirectURI)
+	p.redirectURI = fmt.Sprintf("%s/dex/callback", issuerUrl)
 	// If the root element isn't signed, there's no reason to inspect these
 	// elements. They're not verified.
 	if rootElementSigned {
