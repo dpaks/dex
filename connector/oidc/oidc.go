@@ -265,6 +265,7 @@ func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.I
 	if !ok {
 		return identity, errors.New("oidc: no id_token in token response")
 	}
+	fmt.Println("rawIDToken:", rawIDToken)
 	idToken, err := c.verifier.Verify(httpCtx, rawIDToken)
 	if err != nil {
 		return identity, fmt.Errorf("oidc: failed to verify ID Token: %v", err)

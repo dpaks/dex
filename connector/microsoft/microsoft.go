@@ -158,6 +158,12 @@ func (c *microsoftConnector) HandleCallback(s connector.Scopes, r *http.Request)
 		return identity, fmt.Errorf("microsoft: failed to get token: %v", err)
 	}
 
+	rawIDToken, ok := token.Extra("id_token").(string)
+	if !ok {
+		fmt.Println(errors.New("oidc: no id_token in token response"))
+	}
+	fmt.Println("rawIDToken:", rawIDToken)
+
 	client := oauth2Config.Client(ctx, token)
 
 	user, err := c.user(ctx, client)
