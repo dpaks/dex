@@ -251,7 +251,8 @@ type provider struct {
 	logger log.Logger
 }
 
-func (p *provider) POSTData(s connector.Scopes, id string) (action, value string, err error) {
+func (p *provider) POSTData(host string, s connector.Scopes, id string) (action, value string, err error) {
+	issuerUrl := fmt.Sprintf("https://%s", host)
 	r := &authnRequest{
 		ProtocolBinding: bindingPOST,
 		ID:              id,
@@ -261,13 +262,15 @@ func (p *provider) POSTData(s connector.Scopes, id string) (action, value string
 			AllowCreate: true,
 			Format:      p.nameIDPolicyFormat,
 		},
-		AssertionConsumerServiceURL: p.redirectURI,
+		// AssertionConsumerServiceURL: p.redirectURI,
+		AssertionConsumerServiceURL: fmt.Sprintf("%s/dex/callback", issuerUrl),
 	}
 	if p.entityIssuer != "" {
 		// Issuer for the request is optional. For example, okta always ignores
 		// this value.
 		r.Issuer = &issuer{Issuer: p.entityIssuer}
 	}
+	r.Issuer = &issuer{Issuer: issuerUrl}
 
 	data, err := xml.MarshalIndent(r, "", "  ")
 	if err != nil {
@@ -288,7 +291,9 @@ func (p *provider) POSTData(s connector.Scopes, id string) (action, value string
 // * Verify various parts of the Assertion element. Conditions, audience, etc.
 // * Map the Assertion's attribute elements to user info.
 //
-func (p *provider) HandlePOST(s connector.Scopes, samlResponse, inResponseTo string) (ident connector.Identity, err error) {
+func (p *provider) HandlePOST(host string, s connector.Scopes, samlResponse, inResponseTo string) (ident connector.Identity, err error) {
+	issuerUrl := fmt.Sprintf("https://%s", host)
+
 	rawResp, err := base64.StdEncoding.DecodeString(samlResponse)
 	if err != nil {
 		return ident, fmt.Errorf("decode response: %v", err)
@@ -308,6 +313,8 @@ func (p *provider) HandlePOST(s connector.Scopes, samlResponse, inResponseTo str
 		return ident, fmt.Errorf("unmarshal response: %v", err)
 	}
 
+	p.entityIssuer = issuerUrl
+	p.redirectURI = fmt.Sprintf("%s/dex/callback", issuerUrl)
 	// If the root element isn't signed, there's no reason to inspect these
 	// elements. They're not verified.
 	if rootElementSigned {

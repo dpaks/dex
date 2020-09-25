@@ -143,7 +143,8 @@ func (c *microsoftConnector) oauth2Config(scopes connector.Scopes) *oauth2.Confi
 
 func (c *microsoftConnector) LoginURL(scopes connector.Scopes, callbackURL, state string) (string, error) {
 	if c.redirectURI != callbackURL {
-		return "", fmt.Errorf("expected callback URL %q did not match the URL in the config %q", callbackURL, c.redirectURI)
+		//return "", fmt.Errorf("expected callback URL %q did not match the URL in the config %q", callbackURL, c.redirectURI)
+		fmt.Printf("expected callback URL %q did not match the URL in the config %q\n", callbackURL, c.redirectURI)
 	}
 
 	return c.oauth2Config(scopes).AuthCodeURL(state), nil
@@ -163,6 +164,12 @@ func (c *microsoftConnector) HandleCallback(s connector.Scopes, r *http.Request)
 	if err != nil {
 		return identity, fmt.Errorf("microsoft: failed to get token: %v", err)
 	}
+
+	rawIDToken, ok := token.Extra("id_token").(string)
+	if !ok {
+		fmt.Println(errors.New("oidc: no id_token in token response"))
+	}
+	fmt.Println("rawIDToken:", rawIDToken)
 
 	client := oauth2Config.Client(ctx, token)
 

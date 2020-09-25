@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"crypto/tls"
 
 	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
@@ -101,7 +102,13 @@ func knownBrokenAuthHeaderProvider(issuerURL string) bool {
 func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	provider, err := oidc.NewProvider(ctx, c.Issuer)
+    tr := &http.Transport{
+        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    }
+    httpClient := &http.Client{Transport: tr}
+    httpCtx := oidc.ClientContext(ctx, httpClient)
+
+	provider, err := oidc.NewProvider(httpCtx, c.Issuer)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to get provider: %v", err)
@@ -190,7 +197,8 @@ func (c *oidcConnector) Close() error {
 
 func (c *oidcConnector) LoginURL(s connector.Scopes, callbackURL, state string) (string, error) {
 	if c.redirectURI != callbackURL {
-		return "", fmt.Errorf("expected callback URL %q did not match the URL in the config %q", callbackURL, c.redirectURI)
+		//return "", fmt.Errorf("expected callback URL %q did not match the URL in the config %q", callbackURL, c.redirectURI)
+		fmt.Printf("expected callback URL %q did not match the URL in the config %q\n", callbackURL, c.redirectURI)
 	}
 
 	var opts []oauth2.AuthCodeOption
@@ -221,11 +229,18 @@ func (e *oauth2Error) Error() string {
 }
 
 func (c *oidcConnector) HandleCallback(s connector.Scopes, r *http.Request) (identity connector.Identity, err error) {
+
+    tr := &http.Transport{
+        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    }
+    httpClient := &http.Client{Transport: tr}
+    httpCtx := oidc.ClientContext(r.Context(), httpClient)
+
 	q := r.URL.Query()
 	if errType := q.Get("error"); errType != "" {
 		return identity, &oauth2Error{errType, q.Get("error_description")}
 	}
-	token, err := c.oauth2Config.Exchange(r.Context(), q.Get("code"))
+	token, err := c.oauth2Config.Exchange(httpCtx, q.Get("code"))
 	if err != nil {
 		return identity, fmt.Errorf("oidc: failed to get token: %v", err)
 	}
@@ -254,11 +269,19 @@ func (c *oidcConnector) Refresh(ctx context.Context, s connector.Scopes, identit
 }
 
 func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.Identity, token *oauth2.Token) (connector.Identity, error) {
+
+    tr := &http.Transport{
+        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    }
+    httpClient := &http.Client{Transport: tr}
+    httpCtx := oidc.ClientContext(ctx, httpClient)
+
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		return identity, errors.New("oidc: no id_token in token response")
 	}
-	idToken, err := c.verifier.Verify(ctx, rawIDToken)
+	fmt.Println("rawIDToken:", rawIDToken)
+	idToken, err := c.verifier.Verify(httpCtx, rawIDToken)
 	if err != nil {
 		return identity, fmt.Errorf("oidc: failed to verify ID Token: %v", err)
 	}
@@ -270,7 +293,7 @@ func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.I
 
 	// We immediately want to run getUserInfo if configured before we validate the claims
 	if c.getUserInfo {
-		userInfo, err := c.provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
+		userInfo, err := c.provider.UserInfo(httpCtx, oauth2.StaticTokenSource(token))
 		if err != nil {
 			return identity, fmt.Errorf("oidc: error loading userinfo: %v", err)
 		}
