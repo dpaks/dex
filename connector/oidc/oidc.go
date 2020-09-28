@@ -146,7 +146,7 @@ func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, e
 			ClientSecret: c.ClientSecret,
 			Endpoint:     endpoint,
 			Scopes:       scopes,
-			RedirectURL:  c.RedirectURI,
+			//RedirectURL:  c.RedirectURI,
 		},
 		verifier: provider.Verifier(
 			&oidc.Config{ClientID: clientID},
